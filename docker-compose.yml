@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:15
+    container_name: cms_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+    container_name: cms_redis
+    ports:
+      - "${REDIS_PORT}:6379"
+  minio:
+    image: minio/minio:latest
+    container_name: cms_minio
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - minio_data:/data
+  create-bucket:
+    image: minio/mc
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      sleep 2 &&
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb -p local/${MINIO_BUCKET} || true
+      "
+volumes:
+  db_data:
+  minio_data:
